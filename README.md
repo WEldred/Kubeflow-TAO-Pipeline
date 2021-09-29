@@ -33,4 +33,7 @@ Some improvements:
   - There is no "run output" at the pipeline level.
 - Not sure how well "experiment" output (accuracy, etc) is reported back.
 
+## Example of Pipeline
+![pipeline](docs/images/tao-classification-pipeline.PNG)
+
  

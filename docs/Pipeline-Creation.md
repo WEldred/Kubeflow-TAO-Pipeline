@@ -56,7 +56,61 @@ Based on the Classification Jupyter Example, here were the commands I needed:
   - ```classification inference -e /mnt/workspace/specs/classification_retrain_spec.cfg -m /mnt/workspace/tao-experiments/output_retrain/weights/resnet_20.tlt -b 32 -d /mnt/workspace/tao-experiments/data/split/test/person -cm /mnt/workspace/tao-experiments/output_retrain/classmap.json -k <your_key>```
 - *** There are more commands that can be found in the notebook, but this is a good example ***
 
-### Step 3: Create pipeline and appropriate ops
+### Step 3: Build Custom Component Container
+
+Components in the Kubeflow pipeline need a container defined to provide the applications that are used.  We will be using the standard TAO container
+(nvcr.io/nvidia/tao/tao-toolkit-tf:v3.21.08-py3) as a basis for a custom container we will build.  Most of the TAO applications already reside in this container,
+but we will be adding the NGC CLI to this container so our custom container have both TAO and NGC CLI available.  We will save this container away for use
+by Kubeflow when running the pipeline.  I have included a Dockerfile to assist in building this container [Dockerfile](../docker/Dockerfile).
+
+To build this container, you can use the included [build.sh](../docker/run.sh) script.
+
+```buildoutcfg
+(env) ward@dgx:~/projects/Kubeflow-TAO-Pipeline/docker$ ./build.sh
+Sending build context to Docker daemon  5.632kB
+Step 1/12 : FROM nvcr.io/nvidia/tao/tao-toolkit-tf:v3.21.08-py3
+ ---> 8672180cbf38
+Step 2/12 : RUN apt update
+ ---> Using cache
+ ---> 2f4f45f50c21
+Step 3/12 : RUN pip3 install nvidia-pyindex
+ ---> Using cache
+ ---> 9749b1098070
+Step 4/12 : RUN pip3 install nvidia-tao
+ ---> Using cache
+ ---> 1bf1dfe20527
+Step 5/12 : RUN pip3 install kfp
+ ---> Using cache
+ ---> 527fa73dc8af
+Step 6/12 : RUN mkdir /mnt/workspace
+ ---> Using cache
+ ---> 430436e08e29
+Step 7/12 : WORKDIR /opt/
+ ---> Using cache
+ ---> dc737ea50d05
+Step 8/12 : RUN mkdir ngccli
+ ---> Using cache
+ ---> 851edb5fa45c
+Step 9/12 : WORKDIR /opt/ngccli
+ ---> Using cache
+ ---> f604b067d27f
+Step 10/12 : RUN wget https://ngc.nvidia.com/downloads/ngccli_reg_linux.zip
+ ---> Using cache
+ ---> 9c7650c76ecc
+Step 11/12 : RUN unzip ngccli_reg_linux.zip
+ ---> Using cache
+ ---> 4743b9a6bbf4
+Step 12/12 : WORKDIR /workspace/
+ ---> Using cache
+ ---> c5e322cea4f4
+Successfully built c5e322cea4f4
+Successfully tagged tao-toolkit-tf-kf:3.21.08
+```
+
+If you decide to change the name of the custom Docker container, you will need to update the [tao_iva_classification_ops.py](../tao_iva_classification_ops.py) 
+script so the pipeline loads the correct container.
+
+### Step 4: Create pipeline and appropriate ops
 
 Here, we'll edit the two key pipeline files to create a pipeline.  Let's take the first 2 steps as an example:
 
@@ -183,7 +237,7 @@ if __name__ == '__main__':
   compiler.Compiler().compile(taoPipeline, __file__ + '.tar.gz')
 ```
 
-### Step 4: Running the pipeline build
+### Step 5: Running the pipeline build
 
 Now that we've updated the pipeline Python files, we can build the pipeline file **tao_iva_ops_pipeline.py.tar.gz**.
 
