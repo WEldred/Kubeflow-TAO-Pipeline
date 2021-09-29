@@ -1,4 +1,4 @@
-import tao_iva_ops
+import tao_iva_classification_ops as tao_iva_ops
 import kfp.dsl as dsl
 from kubernetes import client as k8s_client
 
@@ -38,13 +38,12 @@ def taoPipeline(
   convert_trt_max_batch_size: str = "64",
   convert_trt_precision: str = "int8",
   convert_trt_batch_size: str = "64",
-  persistent_volume_path: str ="/mnt/workspace",
+  tao_mount_dir: str ="/mnt/workspace", # directory where model/data volume mounted
   api_key: str = "nvidia_tlt",
   ):
 
   # define some variables
   op_dict = {}
-  tao_mount_dir='/mnt/workspace'
   persistent_volume_name='nvidia-workspace'
 
   # Defining the main pipeline here.
@@ -69,7 +68,7 @@ def taoPipeline(
 
 # add component to prune model
 
-  op_dict['tao_prune'] = tao_iva_ops.TAOPruneOp(
+  op_dict['tao_prune'] = tao_iva_ops.TAOPruneClassificationOp(
                           "prune-model", tao_mount_dir, api_key, prune_model_input_file, prune_model_output_file, prune_threshold, prune_equalization_criterion)
   op_dict['tao_prune'].after(op_dict['tao_train'])
 
@@ -117,7 +116,7 @@ def taoPipeline(
     convert_trt_output_layer, convert_trt_dims, convert_trt_input_type, convert_trt_max_batch_size, convert_trt_precision, convert_trt_batch_size)
   op_dict['tao_create_trt'].after(op_dict['tao_export_int8_model'])
 
-  # add volume mount to all components
+# add volume mount to all components
 
   for name, container_op in op_dict.items():
     container_op.add_volume(k8s_client.V1Volume(
@@ -129,5 +128,4 @@ def taoPipeline(
 
 if __name__ == '__main__':
   import kfp.compiler as compiler
-#  compiler.Compiler().compile(workflow1, __file__ + '.tar.gz')
   compiler.Compiler().compile(taoPipeline, __file__ + '.tar.gz')

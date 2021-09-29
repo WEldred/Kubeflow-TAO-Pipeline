@@ -1,7 +1,7 @@
 import kfp.dsl as dsl
 from kubernetes import client as k8s_client
 
-__TAO_CONTAINER_VERSION__='weldred-kftao:0.1'
+__TAO_CONTAINER_VERSION__='tao-toolkit-tf-kf:3.21.08'
 
 #
 # General Structures and Operators
@@ -118,10 +118,10 @@ class TAOExportClassificationAdvancedOp(dsl.ContainerOp):
       )
     name=name
 
-class TAOPruneOp(dsl.ContainerOp):
+class TAOPruneClassificationOp(dsl.ContainerOp):
   def __init__(self, name, tao_mount_dir, api_key, pretrained_model, output_dir,
                pruning_threshold, equalization_criterion):
-    super(TAOPruneOp, self).__init__(
+    super(TAOPruneClassificationOp, self).__init__(
       name=name,
       image=__TAO_CONTAINER_VERSION__,
       command=['classification'],
@@ -188,71 +188,6 @@ class TAOCalibrateClassificationOp(dsl.ContainerOp):
       )
     name=name
 
-#
-# Object Detection Routines
-#
-# Note: Not updated
-
-class TAOTrainDetectionOp(dsl.ContainerOp):
-  def __init__(self, name, tao_mount_dir, api_key, results_dir, spec_file, num_gpus, model_name):
-    super(TAOTrainDetectionOp, self).__init__(
-      name=name,
-      image=__TAO_CONTAINER_VERSION__,
-      command=['tao-train'],
-      arguments=[
-        "detection",
-        '--gpus', num_gpus,
-        '-k', api_key,
-        '-e', '%s/%s' % (tao_mount_dir, spec_file),
-        '-r', '%s/%s' % (tao_mount_dir, results_dir),
-        '-n', model_name
-      ],
-      file_outputs={}
-      )
-    name=name
-
-class TAOEvaluateDetectionOp(dsl.ContainerOp):
-  def __init__(self, name, tao_mount_dir, api_key, experiment_spec_file, model_file):
-    super(TAOEvaluateDetectionOp, self).__init__(
-      name=name,
-      image=__TAO_CONTAINER_VERSION__,
-      command=['tao-evaluate'],
-      arguments=[
-        "detection",
-        '-e', '%s/%s' % (tao_mount_dir, experiment_spec_file),
-        '-k', api_key,
-        '-m', '%s/%s' % (tao_mount_dir, model_file)
-      ],
-      file_outputs={}
-      )
-    name=name
-
-class TAOInferenceDetectionOp(dsl.ContainerOp):
-  def __init__(self, name, tao_mount_dir, api_key, model, inference_input,
-               inference_output, batch_size, box_overlay, cluster_params_file,
-               line_width, gpu_set, output_cov, output_bbox, kitti_dump):
-    super(TAOInferenceDetectionOp, self).__init__(
-      name=name,
-      image=__TAO_CONTAINER_VERSION__,
-      command=['tao-infer'],
-      arguments=[
-        "detection",
-        '-ek', encryption_key,
-        '-m', '%s/%s' % (tao_mount_dir, model),
-        '-i', '%s/%s' % (tao_mount_dir, inference_input),
-        '-o', '%s/%s' % (tao_mount_dir, inference_output),
-        '-bs', batch_size,
-        '-k', kitti_dump,
-        '-bo', box_overlay,
-        '-cp', '%s/%s' % (tao_mount_dir, cluster_params_file),
-        'lw', line_width,
-        '-g', gpu_set,
-        '--output_cov', output_cov,
-        '--output_bbox', output_bbox,
-      ],
-      file_outputs={}
-      )
-    name=name
 
 #
 # TRT Operators
@@ -314,6 +249,12 @@ class TAOParseResultsOp(dsl.ContainerOp):
       file_outputs={'output': '%s/%s.txt' % (path_prefix, value_id)})
     name=name
 
+#
+# Deployment Operators
+#
+# Copy final models to Triton model directory
+#
+
 class TAODeployOp(dsl.ContainerOp):
   def __init__(self, name, tao_mount_dir, model_file, destination):
     super(TAODeployOp, self).__init__(
@@ -325,6 +266,10 @@ class TAODeployOp(dsl.ContainerOp):
       ],
       file_outputs={})
     name=name
+
+#
+# Misc Operators
+#
 
 class KubeflowFetchOp(dsl.ContainerOp):
   def __init__(self, path_prefix, filename):
@@ -349,16 +294,6 @@ class KubeflowLSOp(dsl.ContainerOp):
       file_outputs={}
       )
     name=name
-
-class FlipCoinOp(dsl.ContainerOp):
-  def __init__(self, name):
-    super(FlipCoinOp, self).__init__(
-        name=name,
-        image='python:alpine3.6',
-        command=['sh', '-c'],
-        arguments=['python -c "import random; result = \'heads\' if random.randint(0,1) == 0 '
-                   'else \'tails\'; print(result)" | tee /tmp/output'],
-        file_outputs={'output': '/tmp/output'})
 
 class PrintOp(dsl.ContainerOp):
   def __init__(self, name, command):
