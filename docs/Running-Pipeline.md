@@ -24,7 +24,7 @@ and click Start (at the bottom).
 Once it's running, you can click on the run and watch its status by clicking on the job.  To check the status, you can
 click on individual components and click on the log tab to view that status and error messages that might have come out.
 
-![create-run](./images/tao-monitor-pipeline.PNG)
+![monitor-pipeline](./images/tao-pipeline-monitor.PNG)
 
 
 
